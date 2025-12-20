@@ -1,3 +1,5 @@
 *env*
 __py*__
+wandb
+data
 
