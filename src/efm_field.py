@@ -21,13 +21,13 @@ class EFM:
     
     def __init__(self, config, learnable_masses: bool = False):
         self._config = config # private attribute
-        
+        self.learnable_masses = learnable_masses
         if learnable_masses:
-            self.log_mass_p = nn.Parameter(torch.randn(1)).to('cuda')
-            self.log_mass_q = nn.Parameter(torch.randn(1)).to('cuda')
+            self.log_mass_p = nn.Parameter(torch.tensor(0.0, device=config.device), requires_grad=True)
+            self.log_mass_q = nn.Parameter(torch.tensor(0.0, device=config.device), requires_grad=True)
         else:
-            self.log_mass_p = torch.tensor(0.0)
-            self.log_mass_q = torch.tensor(0.0)
+            self.log_mass_p = torch.tensor(0.0, device=config.device)
+            self.log_mass_q = torch.tensor(0.0, device=config.device)
          
     @property
     def config(self):
@@ -207,8 +207,8 @@ class EFM:
                     net: tp.Callable[[torch.Tensor], torch.Tensor],
                     optimizer, **kwargs: tp.Any ): #-> tp.Sequence[tp.Callable[[torch.Tensor], torch.Tensor], tp.Sequence[int]]:
         
-        if self.log_mass_p is not None:
-            optimizer.add_param_group({
+        if self.learnable_masses:
+            optimizer.add_param_group({ 
                 'params': [self.log_mass_p, self.log_mass_q],
                 'lr': kwargs.get('mass_lr', 1e-3)  # можно задать отдельный learning rate
             })
@@ -230,15 +230,19 @@ class EFM:
             pred  = net(perturbed_samples_vec)
             loss = torch.mean((field - pred)**2)
 
-
-        if self.log_mass_p is not None:
-            mass_reg = 0.01 * ((torch.exp(self.log_mass_p) - 1.0)**2 + 
-                              (torch.exp(self.log_mass_q) - 1.0)**2)
-            loss = loss + mass_reg
-
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
+
+
+        # if self.learnable_masses:
+        #     mass_reg = 0.01 * ((torch.exp(self.log_mass_p) - 1.0)**2 + 
+        #                       (torch.exp(self.log_mass_q) - 1.0)**2)
+        #     loss = loss + mass_reg
+
+        #     loss.backward()
+        #     optimizer.step()
+        #     losses.append(loss.item())
             
             if kwargs.get("verbose",False):
                 clear_output(wait=True)
