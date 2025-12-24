@@ -9,6 +9,8 @@ import typing as tp
 from tqdm import tqdm
 from IPython.display import clear_output
 
+import torch.nn as nn
+
 import sys
 sys.path.append("/home/windowskonon1337/sources/FieldMatching")
 from src.ode import get_rk45_sampler_pfgm, LearnedImageODESolver
@@ -17,8 +19,15 @@ from src.ode import get_rk45_sampler_pfgm, LearnedImageODESolver
 
 class EFM:
     
-    def __init__(self, config):
+    def __init__(self, config, learnable_masses: bool = False):
         self._config = config # private attribute
+        
+        if learnable_masses:
+            self.log_mass_p = nn.Parameter(torch.randn(1)).to('cuda')
+            self.log_mass_q = nn.Parameter(torch.randn(1)).to('cuda')
+        else:
+            self.log_mass_p = torch.tensor(0.0)
+            self.log_mass_q = torch.tensor(0.0)
          
     @property
     def config(self):
@@ -54,12 +63,12 @@ class EFM:
         fig.set_figwidth( kwargs.get('figwidth', 7))
 
         ax = fig.add_subplot(1,1,1, projection='3d' )
-        ax.scatter(p_samples[:,0].cpu(),p_samples[:,1].cpu(),p_samples[:,2].cpu(),
+        ax.scatter(p_samples[:,0].detach().cpu(),p_samples[:,1].detach().cpu(),p_samples[:,2].detach().cpu(),
                    color='blue',edgecolor='black',s=80,label=r'$x_{+}  \sim \mathbb{P}(x_{+})$')
-        ax.scatter(q_samples[:,0].cpu(),q_samples[:,1].cpu(),q_samples[:,2].cpu(),
+        ax.scatter(q_samples[:,0].detach().cpu(),q_samples[:,1].detach().cpu(),q_samples[:,2].detach().cpu(),
                    color='red',edgecolor='black',s=80,label=r'$x_{-}  \sim \mathbb{Q}(x_{-})$')
-        ax.quiver(mesh[:, 0].cpu(), mesh[:, 1].cpu(), mesh[:,2].cpu(),
-                  field[:, 0].cpu(), field[:, 1].cpu(), field[:,2].cpu(),
+        ax.quiver(mesh[:, 0].detach().cpu(), mesh[:, 1].detach().cpu(), mesh[:,2].detach().cpu(),
+                  field[:, 0].detach().cpu(), field[:, 1].detach().cpu(), field[:,2].detach().cpu(),
                   color='black',length=1, normalize=True)
         ax.set_title(kwargs.get("title", "EFM Ground Truth"))
         ax.legend()
@@ -80,7 +89,7 @@ class EFM:
         fig.set_figwidth( kwargs.get('figwidth', 7))
         
         ax = fig.add_subplot(1,1,1,  projection='3d' )
-        ax.scatter(p_samples[:,0].cpu(),p_samples[:,1].cpu(),p_samples[:,2].cpu(),
+        ax.scatter(p_samples[:,0].detach().cpu(),p_samples[:,1].detach().cpu(),p_samples[:,2].detach().cpu(),
                    color='blue',edgecolor='black',s=80, label=r'$x_{+}  \sim \mathbb{P}(x_{+})$')
         
          
@@ -88,16 +97,16 @@ class EFM:
         traj[-1][:,0] = 6.5
         for jdx in range(len(traj[-1])):
             
-            ax.scatter(traj[-1][jdx,0].cpu(),traj[-1][jdx,1].cpu(),traj[-1][jdx,2].cpu(),
+            ax.scatter(traj[-1][jdx,0].detach().cpu(),traj[-1][jdx,1].detach().cpu(),traj[-1][jdx,2].detach().cpu(),
             color='lightgreen',edgecolor='black',zorder=20,label=r'$y \sim  T(x_{+})$' if jdx==0 else None,s=80)
             
-            ax.scatter(q_samples[jdx,0].cpu(),q_samples[jdx,1].cpu(),q_samples[jdx,2].cpu(),
+            ax.scatter(q_samples[jdx,0].detach().cpu(),q_samples[jdx,1].detach().cpu(),q_samples[jdx,2].detach().cpu(),
                    color='red',edgecolor='black',s=80, label=r'$x_{-}  \sim \mathbb{Q}(x_{-})$' if jdx==0 else None)
             
         for idx in range(200,230):
-            ax.plot(traj[: ,idx,0].cpu(), 
-                traj[:, idx,1].cpu(),
-                traj[:, idx,2].cpu(),
+            ax.plot(traj[: ,idx,0].detach().cpu(), 
+                traj[:, idx,1].detach().cpu(),
+                traj[:, idx,2].detach().cpu(),
                 color='black',linewidth=0.5, zorder=3);
         ax.set_title(kwargs.get("title", "EFM Ground Truth"))
         ax.legend() 
@@ -136,7 +145,7 @@ class EFM:
         
         for idx in range(kwargs.get('figsize',5)):
             for jdx in range(kwargs.get('figsize',5)):
-                ax[idx,jdx].imshow(x[idx,jdx].permute(1,2,0).cpu())
+                ax[idx,jdx].imshow(x[idx,jdx].permute(1,2,0).detach().cpu())
                 ax[idx,jdx].set_yticks([])
                 ax[idx,jdx].set_xticks([])
         fig.tight_layout(pad=kwargs.get('pad',0.00001))       
@@ -156,7 +165,7 @@ class EFM:
         
         for time in range(len(traj)):
             for idx in range(kwargs.get('figsize',5)):
-                ax[idx,time].imshow(np.clip(traj[time,idx].permute(1,2,0).cpu().numpy()*255,0,255).astype(np.uint8))
+                ax[idx,time].imshow(np.clip(traj[time,idx].permute(1,2,0).detach().cpu().numpy()*255,0,255).astype(np.uint8))
                 ax[idx,time].set_xticks([])
                 ax[idx,time].set_yticks([])
 
@@ -198,7 +207,13 @@ class EFM:
                     net: tp.Callable[[torch.Tensor], torch.Tensor],
                     optimizer, **kwargs: tp.Any ): #-> tp.Sequence[tp.Callable[[torch.Tensor], torch.Tensor], tp.Sequence[int]]:
         
-        
+        if self.log_mass_p is not None:
+            optimizer.add_param_group({
+                'params': [self.log_mass_p, self.log_mass_q],
+                'lr': kwargs.get('mass_lr', 1e-3)  # можно задать отдельный learning rate
+            })
+
+
         losses = []
         for step in tqdm(range(self._config.training.training_steps)):
 
@@ -214,6 +229,13 @@ class EFM:
             #field = math.sqrt(self._config.DIM)*field/( torch.norm(field, dim=1, keepdim=True) + 1e-5)
             pred  = net(perturbed_samples_vec)
             loss = torch.mean((field - pred)**2)
+
+
+        if self.log_mass_p is not None:
+            mass_reg = 0.01 * ((torch.exp(self.log_mass_p) - 1.0)**2 + 
+                              (torch.exp(self.log_mass_q) - 1.0)**2)
+            loss = loss + mass_reg
+
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
@@ -674,8 +696,11 @@ class EFM:
         
         gt_direction_x *= np.sqrt(self._config.DIM)
         gt_direction_y *= np.sqrt(self._config.DIM)
+
+        gt_direction_x *= torch.exp(self.log_mass_p)
+        gt_direction_y *= torch.exp(self.log_mass_q)
         
         
-        return  - gt_direction_x +  gt_direction_y                             
+        return  - gt_direction_x + gt_direction_y                             
     ######################################## 
     
