@@ -337,7 +337,7 @@ class EFM:
                 net_x, net_z = net(perturbed_samples_x, perturbed_samples_z)
             ###############################    
                 
-            net_x = net_x.view(net_x.shape[0], -1)
+            net_x = net_x.reshape(net_x.shape[0], -1)
             # Predicted N+1-dimensional Poisson field
             pred = torch.cat([net_z[:, None], net_x], dim=1)
              
