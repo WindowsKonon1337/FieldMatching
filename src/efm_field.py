@@ -333,6 +333,7 @@ class EFM:
                 assert torch.isnan(net_z).any().item() == False
             except AssertionError:
                 print('None values in network prediction')
+                continue
             else:
                 net_x, net_z = net(perturbed_samples_x, perturbed_samples_z)
             ###############################    
@@ -342,8 +343,26 @@ class EFM:
             pred = torch.cat([net_z[:, None], net_x], dim=1)
              
             loss = torch.mean((field - pred)**2)
+
+            if torch.isnan(loss) or torch.isinf(loss):
+                print(f'NaN/Inf loss at step {step}, skipping backward')
+                print(f'  Field stats: min={field.min().item():.6f}, max={field.max().item():.6f}, nan_count={torch.isnan(field).sum().item()}')
+                print(f'  Pred stats: min={pred.min().item():.6f}, max={pred.max().item():.6f}, nan_count={torch.isnan(pred).sum().item()}')
+                continue
  
             loss.backward()
+
+            has_nan_grad = False
+            for name, param in net.named_parameters():
+                if param.grad is not None and torch.isnan(param.grad).any():
+                    print(f'NaN gradient in {name} at step {step}')
+                    has_nan_grad = True
+                    break
+
+            if has_nan_grad:
+                optimizer.zero_grad()
+                continue
+
             optimize_fn(optimizer, net , step=state['step'], config=self._config)
             state['step'] += 1
             state['ema'].update(net.parameters())
