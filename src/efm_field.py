@@ -10,7 +10,7 @@ from tqdm import tqdm
 from IPython.display import clear_output
 
 import sys
-sys.path.append("/trinity/home/a.kolesov/EFM/")
+sys.path.append("/home/windowskonon1337/sources/FieldMatching")
 from src.ode import get_rk45_sampler_pfgm, LearnedImageODESolver
 
 

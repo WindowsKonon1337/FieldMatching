@@ -7,7 +7,7 @@ import typing as tp
 
 from scipy import integrate, linalg
 import sys
-sys.path.append("/trinity/home/a.kolesov/EFM/")
+sys.path.append("/home/windowskonon1337/sources/FieldMatching")
 from src.utils import from_flattened_numpy,  to_flattened_numpy
 
 
