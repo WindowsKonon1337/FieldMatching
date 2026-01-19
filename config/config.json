@@ -1,0 +1,90 @@
+{
+  "data": {
+    "name": "CIFAR",
+    "num_channels": 3,
+    "img_resize": 32,
+    "image_size": 32,
+    "centered": true
+  },
+  "device": "cuda",
+  "L": 500,
+  "DIM": null,
+  "p": {
+    "x_loc": 0.0
+  },
+  "q": {
+    "x_loc": null
+  },
+  "training": {
+    "small_batch_size": 64,
+    "batch_size": 1024,
+    "n_iters": 1000000,
+    "sde": "poisson",
+    "eval_freq": 1000,
+    "snapshot_freq": 5000,
+    "sigma_end": 0.01,
+    "M": 291,
+    "tau": 0.03,
+    "epsilon": 0.001,
+    "interpolation": "Gaussian_mixing",
+    "restrict_M": false,
+    "stability": true,
+    "gamma": 5.0,
+    "learnable_masses": false
+  },
+  "model": {
+    "name": "ncsnpp",
+    "scale_by_sigma": false,
+    "ema_rate": 0.9999,
+    "normalization": "GroupNorm",
+    "nonlinearity": "swish",
+    "nf": 128,
+    "ch_mult": [1, 2, 2, 2],
+    "num_res_blocks": 4,
+    "attn_resolutions": [16],
+    "resamp_with_conv": true,
+    "conditional": true,
+    "fir": false,
+    "fir_kernel": [1, 3, 3, 1],
+    "skip_rescale": true,
+    "resblock_type": "biggan",
+    "progressive": "none",
+    "progressive_input": "none",
+    "progressive_combine": "sum",
+    "attention_type": "ddpm",
+    "init_scale": 0.0,
+    "fourier_scale": 16,
+    "embedding_type": "positional",
+    "conv_size": 3,
+    "sigma_end": 0.1,
+    "dropout": 0.1
+  },
+  "optim": {
+    "weight_decay": 0,
+    "optimizer": "Adam",
+    "lr": 0.0002,
+    "beta1": 0.9,
+    "eps": 1e-8,
+    "warmup": 5000,
+    "grad_clip": 1.0
+  },
+  "ode": {
+    "gamma": 1e-7,
+    "step": 0.25
+  },
+  "sampling": {
+    "method": "ode",
+    "ode_solver": "rk45",
+    "N": 100,
+    "z_max": 100,
+    "z_min": 0.001,
+    "upper_norm": 3000,
+    "z_exp": 1
+  },
+  "wandb": {
+    "api_key": "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",
+    "project": "EFMGenerationCIFAR",
+    "mode": "online",
+    "name_exp": "da"
+  }
+}
