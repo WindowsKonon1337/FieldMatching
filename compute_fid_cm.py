@@ -62,15 +62,19 @@ def load_checkpoint(checkpoint_path, model, ema, device):
     return step
 
 
-def generate_samples_batch(model, config, num_samples, batch_size, device):
+def generate_and_compute_stats_batch(model, config, num_samples, gen_batch_size, 
+                                     inception_model, fid_batch_size, device):
+    """Генерирует семплы и сразу вычисляет статистики по батчам без сохранения всех в памяти"""
     model.eval()
-    all_samples = []
+    inception_model.eval()
     
-    num_batches = (num_samples + batch_size - 1) // batch_size
+    num_batches = (num_samples + gen_batch_size - 1) // gen_batch_size
+    
+    all_activations = []
     
     with torch.no_grad():
-        for i in tqdm(range(num_batches), desc="Generating samples"):
-            current_batch_size = min(batch_size, num_samples - i * batch_size)
+        for i in tqdm(range(num_batches), desc="Generating and computing stats"):
+            current_batch_size = min(gen_batch_size, num_samples - i * gen_batch_size)
             
             shape = (current_batch_size, config.data.num_channels,
                      config.data.image_size, config.data.image_size)
@@ -90,9 +94,21 @@ def generate_samples_batch(model, config, num_samples, batch_size, device):
             if sample.min() < 0:
                 sample = (sample + 1.0) / 2.0
             sample = torch.clamp(sample, 0, 1)
-            all_samples.append(sample.cpu())
+            
+            batch_activations = get_activations_from_tensor(
+                sample, inception_model, fid_batch_size, dims=2048, device=device
+            )
+            all_activations.append(batch_activations)
+            
+            del sample, batch_y, traj
+            if device == 'cuda':
+                torch.cuda.empty_cache()
     
-    return torch.cat(all_samples, dim=0)
+    all_activations = np.vstack(all_activations)
+    mu = np.mean(all_activations, axis=0)
+    sigma = np.cov(all_activations, rowvar=False)
+    
+    return mu, sigma
 
 
 def get_activations_from_tensor(images, model, batch_size=50, dims=2048, device='cuda'):
@@ -100,8 +116,9 @@ def get_activations_from_tensor(images, model, batch_size=50, dims=2048, device=
     
     from torch.nn.functional import interpolate
     
-    if images.min() >= 0:
-        images = images * 2.0 - 1.0
+    if images.min() < 0:
+        images = (images + 1.0) / 2.0
+    images = torch.clamp(images, 0, 1)
     
     if images.shape[2] != 299 or images.shape[3] != 299:
         images = interpolate(images, size=(299, 299), mode='bilinear', align_corners=False)
@@ -133,34 +150,52 @@ def calculate_activation_statistics_from_tensor(images, model, batch_size=50, di
 
 
 def compute_real_statistics(data_loader, model, batch_size=50, dims=2048, device='cuda', num_samples=10000):
+    """Вычисляет статистики для реальных данных по батчам без загрузки всех в память"""
     print(f"Computing real data statistics for {num_samples} samples...")
     
-    all_images = []
+    all_activations = []
     collected = 0
     
     for images, _ in data_loader:
-        all_images.append(images)
+        current_batch_size = images.shape[0]
+        remaining = num_samples - collected
+        
+        if remaining <= 0:
+            break
+        
+        if current_batch_size > remaining:
+            images = images[:remaining]
+        
+        if images.min() < 0:
+            images = (images + 1.0) / 2.0
+        images = torch.clamp(images, 0, 1)
+        
+        batch_activations = get_activations_from_tensor(
+            images, model, batch_size, dims, device
+        )
+        all_activations.append(batch_activations)
+        
         collected += images.shape[0]
+        
         if collected >= num_samples:
             break
     
-    images = torch.cat(all_images, dim=0)[:num_samples]
-    if images.min() < 0:
-        images = (images + 1.0) / 2.0
-    images = torch.clamp(images, 0, 1)
-    
-    mu, sigma = calculate_activation_statistics_from_tensor(
-        images, model, batch_size, dims, device
-    )
+    all_activations = np.vstack(all_activations)[:num_samples]
+    mu = np.mean(all_activations, axis=0)
+    sigma = np.cov(all_activations, rowvar=False)
     
     return mu, sigma
 
 
 def compute_fid_for_checkpoint(checkpoint_path, config, real_mu, real_sigma, 
-                               num_samples, gen_batch_size, fid_batch_size, device):
+                               num_samples, gen_batch_size, fid_batch_size, device,
+                               inception_model):
     print(f"\n{'='*60}")
     print(f"Processing checkpoint: {os.path.basename(checkpoint_path)}")
     print(f"{'='*60}")
+    
+    if device == 'cuda':
+        torch.cuda.empty_cache()
     
     net = DDPM(config).to(device)
     ema = ExponentialMovingAverage(net.parameters(), decay=config.model.ema_rate)
@@ -169,29 +204,29 @@ def compute_fid_for_checkpoint(checkpoint_path, config, real_mu, real_sigma,
         step = load_checkpoint(checkpoint_path, net, ema, device)
     except Exception as e:
         print(f"Error loading checkpoint: {e}")
+        del net, ema
+        if device == 'cuda':
+            torch.cuda.empty_cache()
         return None, step
     
-    print(f"Generating {num_samples} samples...")
+    print(f"Generating {num_samples} samples and computing statistics...")
     try:
-        generated_samples = generate_samples_batch(
-            net, config, num_samples, gen_batch_size, device
+        gen_mu, gen_sigma = generate_and_compute_stats_batch(
+            net, config, num_samples, gen_batch_size,
+            inception_model, fid_batch_size, device
         )
     except Exception as e:
         print(f"Error generating samples: {e}")
+        import traceback
+        traceback.print_exc()
+        del net, ema
+        if device == 'cuda':
+            torch.cuda.empty_cache()
         return None, step
     
-    block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
-    inception_model = InceptionV3([block_idx]).to(device)
-    inception_model.eval()
-    
-    print("Computing generated samples statistics...")
-    try:
-        gen_mu, gen_sigma = calculate_activation_statistics_from_tensor(
-            generated_samples, inception_model, fid_batch_size, dims=2048, device=device
-        )
-    except Exception as e:
-        print(f"Error computing statistics: {e}")
-        return None, step
+    del net, ema
+    if device == 'cuda':
+        torch.cuda.empty_cache()
     
     print("Computing FID...")
     try:
@@ -266,17 +301,21 @@ def main():
     )
     
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
-    inception_model = InceptionV3([block_idx]).to(device)
-    inception_model.eval()
+    inception_model_real = InceptionV3([block_idx]).to(device)
+    inception_model_real.eval()
     
     real_mu, real_sigma = compute_real_statistics(
-        real_loader, inception_model, 
+        real_loader, inception_model_real, 
         batch_size=args.fid_batch_size, 
         dims=2048, 
         device=device,
         num_samples=args.num_samples
     )
     print(f"Real data statistics computed: mu shape={real_mu.shape}, sigma shape={real_sigma.shape}")
+    
+    del inception_model_real
+    if device == 'cuda':
+        torch.cuda.empty_cache()
     
     checkpoint_pattern = os.path.join(args.checkpoints_dir, args.checkpoint_pattern)
     checkpoint_files = sorted(glob.glob(checkpoint_pattern))
@@ -289,10 +328,15 @@ def main():
     
     results = []
     
+    block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
+    inception_model = InceptionV3([block_idx]).to(device)
+    inception_model.eval()
+    
     for checkpoint_path in checkpoint_files:
         fid_value, step = compute_fid_for_checkpoint(
             checkpoint_path, config, real_mu, real_sigma,
-            args.num_samples, args.gen_batch_size, args.fid_batch_size, device
+            args.num_samples, args.gen_batch_size, args.fid_batch_size, device,
+            inception_model
         )
         
         if fid_value is not None:
