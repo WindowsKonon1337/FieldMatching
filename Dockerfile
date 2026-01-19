@@ -29,6 +29,7 @@ COPY src/ ./src/
 COPY train_cifar10.py ./
 COPY train_cm.py ./
 COPY compute_fid_cm.py ./
+COPY generate_images_cm.py ./
 
 RUN mkdir -p /app/data /app/checkpoints /app/config
 
