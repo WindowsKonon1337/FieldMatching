@@ -720,8 +720,8 @@ class EFM:
         gt_direction_x *= np.sqrt(self._config.DIM)
         gt_direction_y *= np.sqrt(self._config.DIM)
 
-        gt_direction_x *= torch.exp(self.log_mass_p)
-        gt_direction_y *= torch.exp(self.log_mass_q)
+        gt_direction_x *= 2 #torch.exp(self.log_mass_p)
+        gt_direction_y *= 1#torch.exp(self.log_mass_q)
         
         
         return  - gt_direction_x + gt_direction_y                             

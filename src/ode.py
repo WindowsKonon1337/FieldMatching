@@ -54,8 +54,9 @@ class DippoleGroundTrurthEFMODESolver:
         
         #while  torch.nonzero(mask).__len__() != 0:
         for _ in tqdm(range(self._config.ode.behind_num_steps)):
-            
-             
+            if not mask.any():
+                break
+
             field[mask] = efm.GroundTruth(perturbed_samples_vec=perturbed_samples_vec[mask],
                                      p_samples=p_samples,
                                      q_samples=q_samples)
@@ -98,6 +99,7 @@ class LearnDippoleEFMODESolver:
         for step in tqdm(range(math.ceil(self._config.L//self._config.ode.step))):  
             
             field =  self.net(perturbed_samples_vec)
+            print(type(self.net))
             perturbed_samples_vec = perturbed_samples_vec +\
                                     (self._config.ode.step/field[:,0].view(-1,1) + self._config.ode.gamma)*field 
             trajectory.append(perturbed_samples_vec.clone().detach().cpu())
@@ -357,10 +359,105 @@ class LearnedODESolver:
                                      (self.config.ode.step/ (field[:,0][:,None] + self.config.ode.gamma ))*field
             trajectory.append(perturbed_samples_vec.clone().detach().cpu())
             mask = perturbed_samples_vec[:,0] < self.config.L 
- 
+
         return perturbed_samples_vec, trajectory
 #############################
 
 
+#############################
+class DynamicODESolver:
+    """
+    ODE solver для динамического уравнения движения частиц: mx" = qE
+    
+    Решает систему уравнений:
+    - dx/dt = v (скорость)
+    - dv/dt = (q/m)E(x) (ускорение)
+    
+    где:
+    - m - масса частицы
+    - q - заряд частицы
+    - E(x) - электрическое поле в точке x
+    """
+    
+    def __init__(self, config, mass=1.0, charge=1.0, initial_velocity=None):
+        """
+        Args:
+            config: конфигурация с параметрами ODE
+            mass: масса частицы (по умолчанию 1.0)
+            charge: заряд частицы (по умолчанию 1.0)
+            initial_velocity: начальная скорость [batch_size, DIM] или None (нулевая скорость)
+        """
+        self._config = config
+        self.mass = mass
+        self.charge = charge
+        self.initial_velocity = initial_velocity
+        
+    @property
+    def config(self):
+        return self._config
+    
+    @config.setter
+    def config(self, config):
+        print("You modify configuration for running code")
+        self._config = config
+    
+    def __call__(self, efm,
+                 perturbed_samples_vec: torch.Tensor,
+                 p_samples: torch.Tensor,
+                 q_samples: torch.Tensor) -> tp.Sequence[torch.Tensor]:
+        batch_size = perturbed_samples_vec.shape[0]
+        dim = perturbed_samples_vec.shape[1]
+        device = perturbed_samples_vec.device
+        
+        if self.initial_velocity is None:
+            velocity = torch.zeros_like(perturbed_samples_vec)
+        else:
+            velocity = self.initial_velocity.to(device)
+            if velocity.shape != perturbed_samples_vec.shape:
+                raise ValueError(f"Initial velocity shape {velocity.shape} doesn't match positions shape {perturbed_samples_vec.shape}")
+        
+        position = perturbed_samples_vec.clone()
+        
+        trajectory = [position.clone().detach().cpu()]
+        
+        acceleration_coeff = self.charge / self.mass
+        
+        dt = getattr(self._config.ode, 'dt', self._config.ode.step)
+        
+        num_steps = math.ceil(self._config.L // self._config.ode.step)
+        
+        for step in tqdm(range(num_steps)):
+            field = efm.GroundTruth(
+                perturbed_samples_vec=position,
+                p_samples=p_samples,
+                q_samples=q_samples
+            )
+            
+            acceleration = acceleration_coeff * field
+            
+            velocity = velocity + acceleration * dt
+            position = position + velocity * dt
+            
+            trajectory.append(position.clone().detach().cpu())
+        
+        behind_dt = getattr(self._config.ode, 'behind_dt', self._config.ode.behind_step)
+        
+        for _ in tqdm(range(self._config.ode.behind_num_steps)):
+            field = efm.GroundTruth(
+                perturbed_samples_vec=position,
+                p_samples=p_samples,
+                q_samples=q_samples
+            )
+            
+            acceleration = acceleration_coeff * field
+            
+            velocity = velocity + acceleration * behind_dt
+            position = position + velocity * behind_dt
+            
+            trajectory.append(position.clone().detach().cpu())
+        
+        return position, trajectory
+#############################
 
- 
+
+
