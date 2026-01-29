@@ -1,0 +1,64 @@
+{
+  "device": "cuda",
+  "L": 6.5,
+  "data": {
+    "num_channels": 3,
+    "image_size": 32,
+    "img_resize": 32,
+    "centered": false,
+    "name": "CMNIST"
+  },
+  "model": {
+    "latent_dim": 256,
+    "ema_rate": 0.999,
+    "use_projection_head": false
+  },
+  "p": {
+    "x_loc": 0.0
+  },
+  "q": {
+    "x_loc": 6.5
+  },
+  "metric_loss": {
+    "num_classes": 10,
+    "components": [
+      { "name": "contrastive", "weight": 1.0, "temperature": 0.07 },
+      { "name": "center", "weight": 0.1 },
+      { "name": "triplet", "weight": 0.5, "margin": 0.3, "mining": "hard" }
+    ]
+  },
+  "training": {
+    "n_iters": 1000000,
+    "batch_size": 128,
+    "small_batch_size": 128,
+    "interpolation": "Uniform_mixing",
+    "epsilon": 0.001,
+    "gamma": 1e-06,
+    "stability": true,
+    "sigma_end": 1.0,
+    "M": 1000,
+    "tau": 0.001,
+    "restrict_M": true,
+    "lambda_metric": 0.5,
+    "lambda_recon": 0.3,
+    "eval_freq": 5000,
+    "snapshot_freq": 5000
+  },
+  "optim": {
+    "lr": 0.0001,
+    "beta1": 0.9,
+    "eps": 1e-08,
+    "weight_decay": 0.0
+  },
+  "ode": {
+    "num_steps": 100,
+    "step": 0.1,
+    "behind_step": 0.01,
+    "behind_num_steps": 100
+  },
+  "wandb": {
+    "project": "LatentEFM_CMNIST",
+    "name_exp": "latent_efm_cmnist",
+    "mode": "offline"
+  }
+}
