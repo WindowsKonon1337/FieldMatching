@@ -4,3 +4,4 @@ wandb
 data
 *checkpoint*
 *.pth
+generated*
