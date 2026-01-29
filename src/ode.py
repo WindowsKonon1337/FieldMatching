@@ -365,6 +365,7 @@ class LearnedODESolver:
 
 
 #############################
+### WIP
 class DynamicODESolver:
     """
     ODE solver для динамического уравнения движения частиц: mx" = qE
@@ -459,5 +460,67 @@ class DynamicODESolver:
         return position, trajectory
 #############################
 
+
+#############################
+class LatentODESolver:
+    def __init__(self, field_network, config):
+        self.field_network = field_network
+        self.config = config
+        self.device = config.device
+    
+    def sample(self, z_init, num_steps=None, method='euler'):
+        if num_steps is None:
+            num_steps = getattr(self.config.ode, 'num_steps', 100)
+        
+        batch_size = z_init.shape[0]
+        latent_dim = z_init.shape[1]
+        
+        z_coord = self.config.L * torch.ones(batch_size).to(self.device)
+        z_latent = z_init.to(self.device)
+        
+        dt = -self.config.L / num_steps 
+        
+        trajectory = []
+        
+        with torch.no_grad():
+            for step in range(num_steps):
+                trajectory.append(z_latent.clone().cpu())
+                
+                if method == 'euler':
+                    field_z_coord, field_z_latent = self.field_network(z_coord, z_latent)
+                    
+                    z_coord = z_coord + field_z_coord * dt
+                    z_latent = z_latent + field_z_latent * dt
+                
+                elif method == 'rk4':
+                    k1_coord, k1_latent = self.field_network(z_coord, z_latent)
+                    
+                    z_coord_mid1 = z_coord + k1_coord * dt / 2
+                    z_latent_mid1 = z_latent + k1_latent * dt / 2
+                    k2_coord, k2_latent = self.field_network(z_coord_mid1, z_latent_mid1)
+                    
+                    z_coord_mid2 = z_coord + k2_coord * dt / 2
+                    z_latent_mid2 = z_latent + k2_latent * dt / 2
+                    k3_coord, k3_latent = self.field_network(z_coord_mid2, z_latent_mid2)
+                    
+                    z_coord_end = z_coord + k3_coord * dt
+                    z_latent_end = z_latent + k3_latent * dt
+                    k4_coord, k4_latent = self.field_network(z_coord_end, z_latent_end)
+                    
+                    z_coord = z_coord + (k1_coord + 2*k2_coord + 2*k3_coord + k4_coord) * dt / 6
+                    z_latent = z_latent + (k1_latent + 2*k2_latent + 2*k3_latent + k4_latent) * dt / 6
+                
+                z_coord = torch.clamp(z_coord, 
+                                      self.config.training.epsilon, 
+                                      self.config.L - self.config.training.epsilon)
+        
+        trajectory.append(z_latent.clone().cpu())
+        
+        return z_latent, trajectory
+    
+    def sample_conditional(self, z_init, anchor_z, k_nearest=5):
+        # TODO: implement cluster-conditioned field evaluation
+        return self.sample(z_init)
+#############################
 
 
