@@ -82,7 +82,7 @@ class CenterLoss(nn.Module):
 
 
 class ArcFaceLoss(nn.Module):
-    def __init__(self, num_classes, feat_dim, scale=64.0, margin=0.5, **kwargs):
+    def __init__(self, num_classes, feat_dim, scale=64.0, margin=0.5, device='cuda', **kwargs):
         super().__init__()
         self.num_classes = num_classes
         self.feat_dim = feat_dim
@@ -91,11 +91,11 @@ class ArcFaceLoss(nn.Module):
         import math
         cos_m = math.cos(margin)
         sin_m = math.sin(margin)
-        self.register_buffer('cos_m', torch.tensor(cos_m))
-        self.register_buffer('sin_m', torch.tensor(sin_m))
-        self.register_buffer('th', torch.tensor(math.cos(math.pi - margin)))
-        self.register_buffer('mm', torch.tensor(math.sin(math.pi - margin) * margin))
-        self.W = nn.Parameter(torch.FloatTensor(num_classes, feat_dim))
+        self.register_buffer('cos_m', torch.tensor(cos_m).to(device))
+        self.register_buffer('sin_m', torch.tensor(sin_m).to(device))
+        self.register_buffer('th', torch.tensor(math.cos(math.pi - margin)).to(device))
+        self.register_buffer('mm', torch.tensor(math.sin(math.pi - margin) * margin).to(device))
+        self.W = nn.Parameter(torch.FloatTensor(num_classes, feat_dim).to(device))
         nn.init.xavier_uniform_(self.W)
 
     def forward(self, features, labels):
@@ -112,13 +112,13 @@ class ArcFaceLoss(nn.Module):
 
 
 class CosFaceLoss(nn.Module):
-    def __init__(self, num_classes, feat_dim, scale=64.0, margin=0.35, **kwargs):
+    def __init__(self, num_classes, feat_dim, scale=64.0, margin=0.35, device='cuda', **kwargs):
         super().__init__()
         self.num_classes = num_classes
         self.feat_dim = feat_dim
         self.scale = scale
         self.margin = margin
-        self.W = nn.Parameter(torch.FloatTensor(num_classes, feat_dim))
+        self.W = nn.Parameter(torch.FloatTensor(num_classes, feat_dim).to(device))
         nn.init.xavier_uniform_(self.W)
 
     def forward(self, features, labels):
