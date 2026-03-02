@@ -9,9 +9,12 @@
     "name": "CMNIST"
   },
   "model": {
-    "latent_dim": 256,
+    "latent_dim": 512,
     "ema_rate": 0.999,
-    "use_projection_head": false
+    "use_projection_head": true,
+    "use_skip_connections": true,
+    "encoder_hidden_dims": [64, 128, 256, 512],
+    "decoder_hidden_dims": [512, 256, 128, 64]
   },
   "p": {
     "x_loc": 0.0
@@ -22,15 +25,14 @@
   "metric_loss": {
     "num_classes": 10,
     "components": [
-      { "name": "contrastive", "weight": 1.0, "temperature": 0.07 },
-      { "name": "center", "weight": 0.1 },
-      { "name": "triplet", "weight": 0.5, "margin": 0.3, "mining": "hard" }
+      { "name": "contrastive", "weight": 0.5, "temperature": 0.15 },
+      { "name": "center", "weight": 0.1 }
     ]
   },
   "training": {
-    "n_iters": 1000000,
-    "batch_size": 128,
-    "small_batch_size": 128,
+    "n_iters": 300000,
+    "batch_size": 256,
+    "small_batch_size": 256,
     "interpolation": "Uniform_mixing",
     "epsilon": 0.001,
     "gamma": 1e-06,
@@ -39,9 +41,10 @@
     "M": 1000,
     "tau": 0.001,
     "restrict_M": true,
-    "lambda_metric": 0.5,
+    "lambda_metric": 0.7,
     "lambda_recon": 0.3,
-    "eval_freq": 5000,
+    "recon_loss": "mse",
+    "eval_freq": 1000,
     "snapshot_freq": 5000
   },
   "optim": {
@@ -59,6 +62,7 @@
   "wandb": {
     "project": "LatentEFM_CMNIST",
     "name_exp": "latent_efm_cmnist",
-    "mode": "offline"
+    "mode": "online",
+    "api_key": "local-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"
   }
 }

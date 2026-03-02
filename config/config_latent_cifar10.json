@@ -1,0 +1,67 @@
+{
+  "device": "cuda",
+  "L": 6.5,
+  "data": {
+    "num_channels": 3,
+    "image_size": 32,
+    "img_resize": 32,
+    "centered": false
+  },
+  "model": {
+    "latent_dim": 2048,
+    "ema_rate": 0.999,
+    "use_projection_head": true,
+    "use_skip_connections": true,
+    "encoder_hidden_dims": [64, 128, 256, 512],
+    "decoder_hidden_dims": [512, 256, 256, 128, 64]
+  },
+  "p": {
+    "x_loc": 0.0
+  },
+  "q": {
+    "x_loc": 6.5
+  },
+  "metric_loss": {
+    "num_classes": 10,
+    "components": [
+      { "name": "center", "weight": 0.1 },
+      { "name": "arcface", "weight": 0.5, "scale": 64.0, "margin": 0.5 }
+    ]
+  },
+  "training": {
+    "n_iters": 300000,
+    "batch_size": 128,
+    "small_batch_size": 128,
+    "interpolation": "Uniform_mixing",
+    "epsilon": 0.001,
+    "gamma": 1e-6,
+    "stability": true,
+    "sigma_end": 1.0,
+    "M": 1000,
+    "tau": 0.001,
+    "restrict_M": true,
+    "lambda_metric": 0.7,
+    "lambda_recon": 0.4,
+    "recon_loss": "perceptual",
+    "eval_freq": 1000,
+    "snapshot_freq": 5000
+  },
+  "optim": {
+    "lr": 0.0001,
+    "beta1": 0.9,
+    "eps": 1e-8,
+    "weight_decay": 0.0
+  },
+  "ode": {
+    "num_steps": 100,
+    "step": 0.1,
+    "behind_step": 0.01,
+    "behind_num_steps": 100
+  },
+  "wandb": {
+    "project": "LatentEFM_CIFAR10",
+    "name_exp": "clusterloss-with-proj-perceptual_recon",
+    "mode": "online",
+    "api_key": "local-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"
+  }
+}

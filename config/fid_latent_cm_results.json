@@ -1,0 +1,116 @@
+{
+  "checkpoints_dir": "./checkpoints/latent_cm",
+  "config": "config_latent_cmnist.json",
+  "num_samples": 10000,
+  "gen_batch_size": 64,
+  "fid_batch_size": 50,
+  "num_steps": 100,
+  "method": "rk4",
+  "results": [
+    {
+      "checkpoint": "checkpoint_step_0.pth",
+      "step": 0,
+      "fid": 332.12682698869094
+    },
+    {
+      "checkpoint": "checkpoint_step_5000.pth",
+      "step": 5000,
+      "fid": 56.13200689277437
+    },
+    {
+      "checkpoint": "checkpoint_step_10000.pth",
+      "step": 10000,
+      "fid": 43.63769386576922
+    },
+    {
+      "checkpoint": "checkpoint_step_15000.pth",
+      "step": 15000,
+      "fid": 52.63580873053485
+    },
+    {
+      "checkpoint": "checkpoint_step_20000.pth",
+      "step": 20000,
+      "fid": 56.04134325071914
+    },
+    {
+      "checkpoint": "checkpoint_step_25000.pth",
+      "step": 25000,
+      "fid": 113.99145767850621
+    },
+    {
+      "checkpoint": "checkpoint_step_30000.pth",
+      "step": 30000,
+      "fid": 76.93123644052332
+    },
+    {
+      "checkpoint": "checkpoint_step_35000.pth",
+      "step": 35000,
+      "fid": 73.74187423177983
+    },
+    {
+      "checkpoint": "checkpoint_step_40000.pth",
+      "step": 40000,
+      "fid": 78.89496444812815
+    },
+    {
+      "checkpoint": "checkpoint_step_45000.pth",
+      "step": 45000,
+      "fid": 65.53295513728312
+    },
+    {
+      "checkpoint": "checkpoint_step_50000.pth",
+      "step": 50000,
+      "fid": 80.78866242502289
+    },
+    {
+      "checkpoint": "checkpoint_step_55000.pth",
+      "step": 55000,
+      "fid": 60.42018192279835
+    },
+    {
+      "checkpoint": "checkpoint_step_60000.pth",
+      "step": 60000,
+      "fid": 61.05008155362336
+    },
+    {
+      "checkpoint": "checkpoint_step_65000.pth",
+      "step": 65000,
+      "fid": 59.20123913969363
+    },
+    {
+      "checkpoint": "checkpoint_step_70000.pth",
+      "step": 70000,
+      "fid": 55.06031792584949
+    },
+    {
+      "checkpoint": "checkpoint_step_75000.pth",
+      "step": 75000,
+      "fid": 67.44344830050719
+    },
+    {
+      "checkpoint": "checkpoint_step_80000.pth",
+      "step": 80000,
+      "fid": 62.449421578289474
+    },
+    {
+      "checkpoint": "checkpoint_step_85000.pth",
+      "step": 85000,
+      "fid": 66.4671900687735
+    },
+    {
+      "checkpoint": "checkpoint_step_90000.pth",
+      "step": 90000,
+      "fid": 64.45329177920382
+    },
+    {
+      "checkpoint": "checkpoint_step_95000.pth",
+      "step": 95000,
+      "fid": 67.36346360897892
+    },
+    {
+      "checkpoint": "checkpoint_step_100000.pth",
+      "step": 100000,
+      "fid": 58.528742842109665
+    }
+  ]
+}
