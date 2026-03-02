@@ -40,20 +40,25 @@ def load_config_from_json(config_path):
 def load_models(checkpoint_path, config):
     print(f"Loading models from {checkpoint_path}")
 
-    if not hasattr(config.model, 'use_projection_head'):
-        config.model.use_projection_head = False
+    # Get architecture parameters from config (with defaults for backward compatibility)
+    encoder_hidden_dims = getattr(config.model, 'encoder_hidden_dims', [64, 128, 256, 512])
+    decoder_hidden_dims = getattr(config.model, 'decoder_hidden_dims', [512, 256, 128, 64])
+    # Skip connections removed - using simple encoder-decoder
+    use_projection_head = getattr(config.model, 'use_projection_head', False)
 
     encoder = MetricEncoder(
         image_size=config.data.image_size,
         in_channels=config.data.num_channels,
         latent_dim=config.model.latent_dim,
-        use_projection_head=config.model.use_projection_head
+        hidden_dims=encoder_hidden_dims,
+        use_projection_head=use_projection_head
     ).to(config.device)
 
     decoder = LatentDecoder(
         latent_dim=config.model.latent_dim,
         out_channels=config.data.num_channels,
-        image_size=config.data.image_size
+        image_size=config.data.image_size,
+        hidden_dims=decoder_hidden_dims
     ).to(config.device)
 
     field_network = LatentFieldNetwork(
