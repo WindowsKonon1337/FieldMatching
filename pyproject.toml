@@ -1,0 +1,28 @@
+[project]
+name = "field-matching"
+version = "0.1.0"
+description = "Electrostatic Field Matching experiments and latent EFM models"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+  "torch==2.1.1",
+  "torchvision==0.16.0",
+  "numpy<2.0.0",
+  "matplotlib>=3.7.0",
+  "wandb>=0.15.0",
+  "tqdm>=4.65.0",
+  "scipy>=1.10.0",
+  "scikit-learn>=1.2.0",
+  "Pillow>=9.5.0",
+  "lpips>=0.1.4",
+  "ml-collections>=0.1.1",
+  "ipython>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+default-groups = ["default"]
