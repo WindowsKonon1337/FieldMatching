@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 dependencies = [
-  "torch==2.1.1",
+  "torch==2.1.0",
   "torchvision==0.16.0",
   "numpy<2.0.0",
   "matplotlib>=3.7.0",
@@ -26,3 +26,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.uv]
 default-groups = ["default"]
+
+[dependency-groups]
+default = []
