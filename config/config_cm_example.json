@@ -7,7 +7,7 @@
     "centered": true
   },
   "device": "cuda",
-  "L": 500,
+  "L": 10,
   "DIM": null,
   "p": {
     "x_loc": 0.0
@@ -16,8 +16,8 @@
     "x_loc": null
   },
   "training": {
-    "small_batch_size": 32,
-    "batch_size": 32,
+    "small_batch_size": 64,
+    "batch_size": 256,
     "n_iters": 1000000,
     "sde": "poisson",
     "eval_freq": 1000,
